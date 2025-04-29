@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Document App</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div>
+        <h1>Bienvenido a la aplicación para firmar documentos</h1>
+    </div>
+    <div>
+        <label>Instroduzca el Certificado:</label>
+        <form id="certForm" method="POST" action="/sign">
+            <input type="file" id="certInput" name="certInput" required>
+        </form>
+
+        <div id="message"></div>
+        <label>Introduzca la contraseña:</label>
+        <input type="password" id="passwordInput" name="passwordInput" placeholder="Contraseña" required>
+    </div>
+
+    <div>
+        <label>Introduzca el documento a firmar:</label>
+        <input type="file" id="fileInput" name="fileInput" accept=".xml" required>
+    </div>
+
+    <div>
+        <button type="button" id="signDocumentBtn">Firmar Documento</button>
+    </div>
+    
+    <div id="signMessage">
+        <p id="signResult"></p>
+    </div>
+    </div>
+</body>
+<script src="script.js"></script>
+
+</html>
