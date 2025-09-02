@@ -1,42 +1,67 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign Document App</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sign Document — Firmar XML</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
-    <div>
-        <h1>Bienvenido a la aplicación para firmar documentos</h1>
-    </div>
-    <div>
-        <label>Instroduzca el Certificado:</label>
-        <form id="certForm" method="POST" action="/sign">
-            <input type="file" id="certInput" name="certInput" required>
-        </form>
+    <header class="topbar">
+        <div class="container">
+            <div class="brand">
+                <svg class="logo" width="36" height="36" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 3h18v2H3zM5 7h14v12H5zM9 10h6v2H9z"/></svg>
+                <h1>Sign Document</h1>
+            </div>
+            <p class="subtitle">Firma tus archivos XML de forma rápida y segura</p>
+        </div>
+    </header>
 
-        <div id="message"></div>
-        <label>Introduzca la contraseña:</label>
-        <input type="password" id="passwordInput" name="passwordInput" placeholder="Contraseña" required>
-    </div>
+    <main class="container grid">
+        <section class="card">
+            <h2>Certificado</h2>
+            <p class="muted">Cargue su certificado (.p12 / .pfx)</p>
 
-    <div>
-        <label>Introduzca el documento a firmar:</label>
-        <input type="file" id="fileInput" name="fileInput" accept=".xml" required multiple>
-    </div>
+            <label class="filebox">
+                <input id="certInput" type="file" accept=".p12,.pfx, .txt" />
+                <span class="filebox-label">Seleccionar certificado</span>
+            </label>
 
-    <div>
-        <button type="button" id="signDocumentBtn">Firmar Documento</button>
-    </div>
-    
-    <div id="signMessage">
-        <p id="signResult"></p>
-    </div>
-    </div>
+            <div class="field-inline">
+                <input id="passwordInput" type="password" placeholder="Contraseña del certificado" aria-label="Contraseña" />
+                <button id="togglePassword" class="icon-btn" title="Mostrar contraseña" aria-pressed="false">👁️</button>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>Documentos a firmar</h2>
+            <p class="muted">Arrastre archivos .xml aquí o selecciónelos manualmente (varios permitidos)</p>
+
+            <div id="dropzone" class="dropzone" tabindex="0">Arrastra y suelta archivos aquí</div>
+
+            <label class="filebox small">
+                <input id="fileInput" type="file" accept=".xml" multiple />
+                <span class="filebox-label">Seleccionar archivos</span>
+            </label>
+
+            <ul id="filesList" class="files-list" aria-live="polite"></ul>
+
+            <div class="actions">
+                <button id="signDocumentBtn" class="primary">Firmar documentos</button>
+            </div>
+            <div id="signMessage" class="sign-message" aria-live="assertive"></div>
+
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container small">Proporcionado por <strong>Alberto Leonor</strong> — Uso público</div>
+    </footer>
+
+    <script src="script.js"></script>
+
 </body>
-<script src="script.js"></script>
 
 </html>

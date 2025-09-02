@@ -1,81 +1,142 @@
-const tboxCertificado = document.getElementById("certInput");
-const tboxPass = document.getElementById("passwordInput");
-const btnChooseXMLFile = document.getElementById("fileInput");
-const btnsignDocument = document.getElementById("signDocumentBtn");
-const lblsignResult = document.getElementById("signResult");
+// New UI elements
+const certInput = document.getElementById('certInput');
+const passwordInput = document.getElementById('passwordInput');
+const togglePasswordBtn = document.getElementById('togglePassword');
+const fileInput = document.getElementById('fileInput');
+const dropzone = document.getElementById('dropzone');
+const filesList = document.getElementById('filesList');
+const signBtn = document.getElementById('signDocumentBtn');
+const signMessage = document.getElementById('signMessage');
 
 let certFile = null;
-let password = "";
-let xmlFiles = []; // Cambia a un array
+let certPassword = '';
 
-tboxCertificado.addEventListener("change", function () {
-  certFile = tboxCertificado.files[0];
-  if (certFile) {
-    tboxCertificado.setAttribute("title", certFile.name);
+let xmlFiles = []; // array of File objects
+
+function setMessage(text, type = 'info'){
+  if(!signMessage) return;
+  signMessage.textContent = text;
+  signMessage.style.color = type === 'error' ? '#ff7b94' : type === 'success' ? '#6ee7b7' : '#a8d1ff';
+}
+
+// Certificate selection
+if(certInput){
+  certInput.addEventListener('change', (e)=>{
+    certFile = e.target.files[0] || null;
+    if(certFile) setMessage(`Certificado: ${certFile.name}`);
+  });
+}
+
+if(passwordInput){
+  passwordInput.addEventListener('input', (e)=>{
+    certPassword = e.target.value;
+  });
+}
+
+if(togglePasswordBtn && passwordInput){
+  togglePasswordBtn.addEventListener('click', ()=>{
+    const obscured = passwordInput.type === 'password';
+    passwordInput.type = obscured ? 'text' : 'password';
+    togglePasswordBtn.setAttribute('aria-pressed', String(obscured));
+  });
+}
+
+// Files list helpers
+function renderFiles(){
+  if(!filesList) return;
+  filesList.innerHTML = '';
+  xmlFiles.forEach((f, i)=>{
+    const li = document.createElement('li');
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.textContent = `${f.name} • ${Math.round(f.size/1024)} KB`;
+    const right = document.createElement('div');
+    const remove = document.createElement('button');
+    remove.className = 'remove';
+    remove.title = 'Eliminar';
+    remove.textContent = '✕';
+    remove.addEventListener('click', ()=>{ xmlFiles.splice(i,1); renderFiles(); });
+    right.appendChild(remove);
+    li.appendChild(meta);
+    li.appendChild(right);
+    filesList.appendChild(li);
+  });
+}
+
+
+// Add files from input or drop
+function addFiles(fileList){
+  const added = Array.from(fileList).filter(f=>f.name.toLowerCase().endsWith('.xml'));
+  if(added.length===0){ setMessage('Solo se aceptan archivos .xml', 'error'); return; }
+  // avoid duplicates by name+size
+  for(const f of added){
+    if(!xmlFiles.some(x=>x.name===f.name && x.size===f.size)) xmlFiles.push(f);
   }
-});
+  renderFiles();
+  setMessage(`${xmlFiles.length} archivo(s) listos`);
+}
 
-tboxPass.addEventListener("change", function () {
-  password = tboxPass.value;
-  tboxPass.setAttribute("title", password);
-});
+if(fileInput){
+  fileInput.addEventListener('change', (e)=> addFiles(e.target.files));
+}
 
-btnChooseXMLFile.addEventListener("change", function () {
-  xmlFiles = Array.from(btnChooseXMLFile.files); // Guarda todos los archivos seleccionados
-  if (xmlFiles.length > 0) {
-    btnChooseXMLFile.setAttribute("title", xmlFiles.map(f => f.name).join(", "));
-  }
-});
 
-btnsignDocument.addEventListener("click", async function () {
-  if (!certFile || !password || xmlFiles.length === 0) {
-    lblsignResult.textContent = "Por favor, complete todos los campos y cargue los archivos.";
-    lblsignResult.style.color = "#ea4335";
-    return;
-  }
+// Drag & drop handlers
+if(dropzone){
+  ['dragenter','dragover'].forEach(ev => dropzone.addEventListener(ev, (e)=>{ e.preventDefault(); e.stopPropagation(); dropzone.classList.add('dragover'); }));
+  ['dragleave','drop'].forEach(ev => dropzone.addEventListener(ev, (e)=>{ e.preventDefault(); e.stopPropagation(); dropzone.classList.remove('dragover'); }));
 
-  lblsignResult.textContent = "Firmando documentos, por favor espere...";
-  lblsignResult.style.color = "#1a73e8";
+  dropzone.addEventListener('drop', (e)=>{
+    if(e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files);
+  });
+}
 
-  for (const xmlFile of xmlFiles) {
-    const reader = new FileReader();
-    reader.onload = async function (e) {
-      const xmlFileContent = e.target.result;
-      const formData = new FormData();
-      formData.append("Certificate", certFile);
-      formData.append("CertPassword", password);
-      formData.append("XmlContent", xmlFileContent);
 
-      try {
-        const response = await fetch("https://app.renotec.com.do/api/Sign/sign", {
-          method: "POST",
-          body: formData,
-        });
+// Signing flow
+if(signBtn){
+  signBtn.addEventListener('click', async ()=>{
+    if(!certFile){ setMessage('Por favor cargue el certificado.', 'error'); return; }
+    if(!certPassword){ setMessage('Ingrese la contraseña del certificado.', 'error'); return; }
+    if(xmlFiles.length===0){ setMessage('Agregue al menos un archivo XML.', 'error'); return; }
 
-        if (!response.ok) {
-          throw new Error("Error en la firma de " + xmlFile.name + ": " + response.statusText);
-        }
+    signBtn.disabled = true;
+    setMessage('Firmando... Por favor espere');
 
-        const result = await response.text();
+    for(const xmlFile of xmlFiles){
+      try{
+        const text = await xmlFile.text();
+        const formData = new FormData();
+        formData.append('Certificate', certFile);
+        formData.append('CertPassword', certPassword);
+        formData.append('XmlContent', text);
 
-        // Descargar el archivo firmado con el mismo nombre y extensión
-        const blob = new Blob([result], { type: "application/xml" });
-        const link = document.createElement("a");
+        const response = await fetch('https://app.renotec.com.do/api/Sign/sign', { method:'POST', body: formData });
+        if(!response.ok) throw new Error(`Error al firmar ${xmlFile.name}: ${response.status} ${response.statusText}`);
+        const signed = await response.text();
+        const blob = new Blob([signed], { type: 'application/xml' });
+        const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.download = xmlFile.name;
         document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link);
-
-        lblsignResult.textContent = "Firma exitosa";
-        lblsignResult.style.color = "#34a853";
-      } catch (error) {
-        lblsignResult.textContent = error.message;
-        lblsignResult.style.color = "#ea4335";
+        link.remove();
+        setMessage(`Firmado: ${xmlFile.name}`, 'success');
+      }catch(err){
+        setMessage(err.message, 'error');
       }
-    };
-    reader.readAsText(xmlFile);
-    // Espera a que termine la lectura antes de continuar con el siguiente archivo
-    await new Promise(resolve => reader.onloadend = resolve);
-  }
-});
+    }
+
+    signBtn.disabled = false;
+  });
+}
+
+
+// Accessible keyboard support for dropzone: pressing Enter opens file dialog
+if(dropzone && fileInput){
+  dropzone.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter' || e.key === ' ') fileInput.click();
+  });
+}
+
+// initial render
+renderFiles();
